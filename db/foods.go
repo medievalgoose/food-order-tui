@@ -5,6 +5,7 @@ type Food struct {
 	Name        string
 	Description string
 	Price       int
+	Image       string
 }
 
 func GetAllFoods() []Food {
@@ -21,7 +22,7 @@ func GetAllFoods() []Food {
 
 	for rows.Next() {
 		var relevantFood Food
-		err := rows.Scan(&relevantFood.ID, &relevantFood.Name, &relevantFood.Description, &relevantFood.Price)
+		err := rows.Scan(&relevantFood.ID, &relevantFood.Name, &relevantFood.Description, &relevantFood.Price, &relevantFood.Image)
 		if err != nil {
 			panic(err)
 		}

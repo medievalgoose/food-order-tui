@@ -23,11 +23,15 @@ func main() {
 
 func setMenuInfoText(food *db.Food, foodInfoText *tview.TextView) {
 	foodInfoText.Clear()
-	text := fmt.Sprintf("Nama makanan: %v \nHarga: %v \nDeskripsi: %v", food.Name, food.Price, food.Description)
+	text := fmt.Sprintf("\nNama makanan: %v \n\nHarga: %v \n\nDeskripsi: %v", food.Name, food.Price, food.Description)
 	foodInfoText.SetText(text)
 
 	foodInfoText.SetBorder(true)
 	foodInfoText.SetTitle("   DETAIL MENU   ")
+}
+
+func changeFoodImage(food *db.Food, foodImage *tview.Image) {
+	foodImage.SetImage(imgProc.GetImage(food.Image))
 }
 
 func assignMenuView() *tview.Flex {
@@ -35,14 +39,8 @@ func assignMenuView() *tview.Flex {
 	foodList := db.GetAllFoods()
 
 	for _, food := range foodList {
-		idString := strconv.Itoa(food.ID)
-
-		var idRune []rune
-		for _, char := range idString {
-			idRune = append(idRune, char)
-		}
-
-		menuList.AddItem(food.Name, strconv.Itoa(food.Price), rune(idRune[0]), nil)
+		// No shortcut
+		menuList.AddItem(food.Name, strconv.Itoa(food.Price), rune(0), nil)
 	}
 
 	menuList.SetBorder(true)
@@ -50,14 +48,16 @@ func assignMenuView() *tview.Flex {
 
 	foodInfoText := tview.NewTextView()
 	foodImage := tview.NewImage()
-	foodImage.SetImage(imgProc.GetImage("sate-padang.png"))
+	// foodImage.SetImage(imgProc.GetImage("sate-padang.png"))
 
 	// menuList.SetChangedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
 	// 	setMenuInfoText(&foodList[index], foodInfoText)
 	// })
 
+	// Show the menu detail if user selected the item by pressing enter or space.
 	menuList.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
 		setMenuInfoText(&foodList[index], foodInfoText)
+		changeFoodImage(&foodList[index], foodImage)
 	})
 
 	// menuDetailFlex := tview.NewFlex().SetDirection(tview.FlexRow)
