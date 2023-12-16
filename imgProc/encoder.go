@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func GetImageInf(imageName string) image.Image {
+func GetImage(imageName string) image.Image {
 	desiredImage := fmt.Sprintf("./imgProc/stock/%v", imageName)
 
 	bytesRes, err := os.ReadFile(desiredImage)

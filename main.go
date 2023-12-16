@@ -50,19 +50,33 @@ func assignMenuView() *tview.Flex {
 
 	foodInfoText := tview.NewTextView()
 	foodImage := tview.NewImage()
-	foodImage.SetImage(imgProc.GetImageInf("coto-makassar.png"))
+	foodImage.SetImage(imgProc.GetImage("sate-padang.png"))
 
-	menuList.SetChangedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+	// menuList.SetChangedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+	// 	setMenuInfoText(&foodList[index], foodInfoText)
+	// })
+
+	menuList.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
 		setMenuInfoText(&foodList[index], foodInfoText)
 	})
 
-	menuDetailFlex := tview.NewFlex().SetDirection(tview.FlexRow)
-	menuDetailFlex.AddItem(foodImage, 0, 4, false).SetBorder(true).SetBorderPadding(1, 0, 0, 0)
-	menuDetailFlex.AddItem(foodInfoText, 0, 6, false)
+	// menuDetailFlex := tview.NewFlex().SetDirection(tview.FlexRow)
+	// menuDetailFlex.AddItem(foodImage, 0, 4, false).SetBorder(true).SetBorderPadding(1, 0, 0, 0)
+	// menuDetailFlex.AddItem(foodInfoText, 0, 6, false)
+
+	menuDetailGrid := tview.NewGrid()
+	menuDetailGrid.SetRows(0)
+	menuDetailGrid.SetColumns(0)
+
+	menuDetailGrid.AddItem(foodImage, 0, 0, 1, 2, 1, 0, true)
+	menuDetailGrid.AddItem(foodInfoText, 1, 0, 1, 2, 1, 0, false)
+
+	menuDetailGrid.SetBorders(true)
 
 	flexbox := tview.NewFlex()
 	flexbox.AddItem(menuList, 0, 1, true)
-	flexbox.AddItem(menuDetailFlex, 0, 1, false)
+	// flexbox.AddItem(menuDetailFlex, 0, 1, false)
+	flexbox.AddItem(menuDetailGrid, 0, 1, false)
 
 	return flexbox
 }
