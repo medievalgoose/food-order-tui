@@ -15,6 +15,8 @@ var app = tview.NewApplication()
 var pages = tview.NewPages()
 var itemSelected bool = false
 
+var orderListDB []db.Order
+
 func main() {
 	// app := tview.NewApplication()
 	pages = listPages()
@@ -187,6 +189,7 @@ func listPages() *tview.Pages {
 
 	MenuPage := assignMenuView()
 	MainMenuPage := assignMainMenuView()
+	OrderListPage := assignOrderListView()
 
 	modal := tview.NewModal()
 	modal.SetText("Your order has been confirmed!")
@@ -194,9 +197,17 @@ func listPages() *tview.Pages {
 		app.Stop()
 	})
 
+	modalOrder := tview.NewModal()
+	modalOrder.SetText("The order has been processed.")
+	modalOrder.AddButtons([]string{"OK"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		app.Stop()
+	})
+
 	pages.AddPage("modal", modal, true, false)
+	pages.AddPage("orderModal", modalOrder, true, false)
 	pages.AddPage("menu", MenuPage, true, false)
 	pages.AddPage("mainMenu", MainMenuPage, true, true)
+	pages.AddPage("orderList", OrderListPage, true, false)
 
 	return pages
 }
@@ -205,7 +216,7 @@ func detectUserInput(app *tview.Application, pages *tview.Pages) {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
 		case rune('c'): // Key a is pressed.
-			pages.SwitchToPage("mainMenu")
+			pages.SwitchToPage("orderList")
 		}
 		return event
 	})
@@ -233,7 +244,7 @@ func assignMainMenuView() *tview.Grid {
 	})
 
 	orderListButton := tview.NewButton("Orders").SetSelectedFunc(func() {
-		app.Stop()
+		pages.SwitchToPage("orderList")
 	})
 
 	mainMenuGrid := tview.NewGrid()
@@ -246,4 +257,67 @@ func assignMainMenuView() *tview.Grid {
 	mainMenuGrid.SetBorderPadding(5, 5, 5, 5)
 
 	return mainMenuGrid
+}
+
+func assignOrderListView() *tview.Grid {
+	orderList := tview.NewList()
+	orderListDB = db.GetAllOrders()
+	orderDetails := tview.NewTextView()
+	var currentSelectedOrder db.Order
+
+	for _, order := range orderListDB {
+		orderList.AddItem("Order ID: "+strconv.Itoa(order.ID), "", rune(0), nil)
+	}
+
+	orderList.SetSelectedFunc(func(index int, primaryText, secondaryText string, shortcut rune) {
+		currentSelectedOrder = orderListDB[index]
+		refreshOrderDetails(currentSelectedOrder, orderDetails)
+	})
+
+	doneButton := tview.NewButton("Finish").SetSelectedFunc(func() {
+		resetOrder("done", orderList, orderDetails, currentSelectedOrder)
+	})
+
+	cancelButton := tview.NewButton("Cancel").SetSelectedFunc(func() {
+		resetOrder("cancel", orderList, orderDetails, currentSelectedOrder)
+	})
+
+	orderListGrid := tview.NewGrid()
+	orderListGrid.SetRows(0, 3)
+	orderListGrid.SetColumns(0)
+	orderListGrid.AddItem(orderList, 0, 0, 2, 1, 0, 0, true)
+	orderListGrid.AddItem(orderDetails, 0, 1, 1, 2, 0, 0, false)
+
+	// Confirm button
+	orderListGrid.AddItem(doneButton, 1, 1, 1, 1, 0, 0, false)
+
+	// Cancel button
+	orderListGrid.AddItem(cancelButton, 1, 2, 1, 1, 0, 0, false)
+
+	orderListGrid.SetBorders(true)
+
+	return orderListGrid
+}
+
+func refreshOrderDetails(currentSelectedOrder db.Order, orderDetailText *tview.TextView) {
+	detailText := fmt.Sprintf("Order ID: %v\n Date: %v\n", currentSelectedOrder.ID, currentSelectedOrder.Date)
+
+	for _, items := range currentSelectedOrder.Items {
+		detailText += fmt.Sprintf("\n - %v | x%v", items.FoodName, items.Quantity)
+	}
+
+	orderDetailText.Clear()
+	orderDetailText.SetText(detailText)
+	orderDetailText.SetBorder(true)
+}
+
+func resetOrder(action string, orderList *tview.List, orderDetailText *tview.TextView, currentSelectedOrder db.Order) {
+	switch action {
+	case "done":
+		db.ChangeOrderStatusToDone(currentSelectedOrder)
+	case "cancel":
+		db.ChangeOrderStatusToCancelled(currentSelectedOrder)
+	}
+
+	pages.SwitchToPage("orderModal")
 }
