@@ -69,7 +69,6 @@ func assignMenuView() *tview.Flex {
 	currentMenuCount := tview.NewTextView().SetText("x0").SetTextAlign(tview.AlignCenter)
 
 	cartButtons.SetSelectedFunc(func() {
-		// panic(len(cartFoods))
 		// Insert the order data here.
 		db.CreateNewOrder(cartFoods, cartFoodMap)
 		changeToConfirmPage()
@@ -189,18 +188,13 @@ func listPages() *tview.Pages {
 	MenuPage := assignMenuView()
 
 	modal := tview.NewModal()
-
-	orderDetails := strconv.Itoa(len(cartFoods))
-	// modal.SetText("Your order has been confirmed!")
-	modal.SetText(orderDetails)
-
+	modal.SetText("Your order has been confirmed!")
 	modal.AddButtons([]string{"OK"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		app.Stop()
 	})
 
 	pages.AddPage("modal", modal, true, false)
 	pages.AddPage("menu", MenuPage, true, true)
-	pages.AddPage("test", tview.NewBox().SetBorder(true), false, false)
 
 	return pages
 }
