@@ -11,10 +11,13 @@ import (
 )
 
 var cartFoods []db.Food
+var app = tview.NewApplication()
+var pages = tview.NewPages()
+var itemSelected bool = false
 
 func main() {
-	app := tview.NewApplication()
-	pages := listPages()
+	// app := tview.NewApplication()
+	pages = listPages()
 
 	detectUserInput(app, pages)
 
@@ -65,6 +68,13 @@ func assignMenuView() *tview.Flex {
 	var currentSelectedIndex int
 	currentMenuCount := tview.NewTextView().SetText("x0").SetTextAlign(tview.AlignCenter)
 
+	cartButtons.SetSelectedFunc(func() {
+		// panic(len(cartFoods))
+		// Insert the order data here.
+		db.CreateNewOrder(cartFoods, cartFoodMap)
+		changeToConfirmPage()
+	})
+
 	// Show the menu detail if user selected the item by pressing enter or space.
 	menuList.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
 		setMenuInfoText(&foodList[index], foodInfoText)
@@ -73,20 +83,26 @@ func assignMenuView() *tview.Flex {
 		currentSelectedFood = foodList[index]
 		currentSelectedIndex = index
 
+		itemSelected = true
+
 		reinitializeMenuCount(currentMenuCount, currentSelectedFood, cartFoodMap)
 	})
 
 	// Menu Actions related
 	decreaseButton := tview.NewButton("-").SetSelectedFunc(func() {
-		refreshMenuCount("decrease", currentMenuCount, cartFoodMap, currentSelectedFood)
-		refreshMenuDetail(menuList, currentSelectedIndex, cartFoodMap, currentSelectedFood)
-		refreshTotalCount(cartDetail, cartFoods, cartFoodMap)
+		if itemSelected {
+			refreshMenuCount("decrease", currentMenuCount, cartFoodMap, currentSelectedFood)
+			refreshMenuDetail(menuList, currentSelectedIndex, cartFoodMap, currentSelectedFood)
+			refreshTotalCount(cartDetail, cartFoods, cartFoodMap)
+		}
 	})
 
 	increaseButton := tview.NewButton("+").SetSelectedFunc(func() {
-		refreshMenuCount("increase", currentMenuCount, cartFoodMap, currentSelectedFood)
-		refreshMenuDetail(menuList, currentSelectedIndex, cartFoodMap, currentSelectedFood)
-		refreshTotalCount(cartDetail, cartFoods, cartFoodMap)
+		if itemSelected {
+			refreshMenuCount("increase", currentMenuCount, cartFoodMap, currentSelectedFood)
+			refreshMenuDetail(menuList, currentSelectedIndex, cartFoodMap, currentSelectedFood)
+			refreshTotalCount(cartDetail, cartFoods, cartFoodMap)
+		}
 	})
 
 	menuActionGrid := tview.NewGrid()
@@ -114,7 +130,6 @@ func assignMenuView() *tview.Flex {
 
 	flexbox := tview.NewFlex()
 	flexbox.AddItem(menuListGrid, 0, 1, true)
-	// flexbox.AddItem(menuDetailFlex, 0, 1, false)
 	flexbox.AddItem(menuDetailGrid, 0, 1, false)
 
 	return flexbox
@@ -173,6 +188,17 @@ func listPages() *tview.Pages {
 
 	MenuPage := assignMenuView()
 
+	modal := tview.NewModal()
+
+	orderDetails := strconv.Itoa(len(cartFoods))
+	// modal.SetText("Your order has been confirmed!")
+	modal.SetText(orderDetails)
+
+	modal.AddButtons([]string{"OK"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		app.Stop()
+	})
+
+	pages.AddPage("modal", modal, true, false)
 	pages.AddPage("menu", MenuPage, true, true)
 	pages.AddPage("test", tview.NewBox().SetBorder(true), false, false)
 
@@ -182,8 +208,8 @@ func listPages() *tview.Pages {
 func detectUserInput(app *tview.Application, pages *tview.Pages) {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
-		case 97: // Key a is pressed.
-			pages.SwitchToPage("test")
+		case rune('c'): // Key a is pressed.
+			pages.SwitchToPage("modal")
 		}
 		return event
 	})
@@ -197,4 +223,8 @@ func removeItem(cartFoods []db.Food, foodID int) []db.Food {
 		}
 	}
 	return newArray
+}
+
+func changeToConfirmPage() {
+	pages.SwitchToPage("modal")
 }
