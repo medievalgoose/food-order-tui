@@ -10,6 +10,8 @@ import (
 	"github.com/rivo/tview"
 )
 
+var cartFoods []db.Food
+
 func main() {
 	app := tview.NewApplication()
 	pages := listPages()
@@ -37,9 +39,11 @@ func changeFoodImage(food *db.Food, foodImage *tview.Image) {
 func assignMenuView() *tview.Flex {
 	menuList := tview.NewList()
 	menuMap := make(map[string]int)
-	// menuList.ShowSecondaryText(false)
+
+	// Get list of foods from DB.
 	foodList := db.GetAllFoods()
 
+	// List the foods.
 	for _, food := range foodList {
 		// No shortcut
 		menuList.AddItem(food.Name, strconv.Itoa(food.Price), rune(0), nil)
@@ -53,46 +57,51 @@ func assignMenuView() *tview.Flex {
 	foodImage := tview.NewImage()
 
 	// Ordered items data
-	var cartFoods []db.Food
+	// var cartFoods []db.Food
 	cartFoodMap := make(map[int]int)
 	cartButtons := tview.NewButton("Confirm Order")
 	cartDetail := tview.NewTextView().SetText("Total: 0")
-
-	menuList.SetChangedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
-		setMenuInfoText(&foodList[index], foodInfoText)
-		changeFoodImage(&foodList[index], foodImage)
-	})
+	var currentSelectedFood db.Food
+	var currentSelectedIndex int
+	currentMenuCount := tview.NewTextView().SetText("x0").SetTextAlign(tview.AlignCenter)
 
 	// Show the menu detail if user selected the item by pressing enter or space.
 	menuList.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
 		setMenuInfoText(&foodList[index], foodInfoText)
 		changeFoodImage(&foodList[index], foodImage)
 
-		// Increment the order count
-		menuMap[foodList[index].Name] = menuMap[foodList[index].Name] + 1
-		menuList.SetItemText(index, foodList[index].Name, strconv.Itoa(foodList[index].Price)+" | x"+strconv.Itoa(menuMap[foodList[index].Name]))
+		currentSelectedFood = foodList[index]
+		currentSelectedIndex = index
 
-		// Check if the item already exist on the list
-		_, itemExist := cartFoodMap[foodList[index].ID]
-		if itemExist {
-			cartFoodMap[foodList[index].ID] = cartFoodMap[foodList[index].ID] + 1
-		} else {
-			cartFoodMap[foodList[index].ID] = 1
-			cartFoods = append(cartFoods, foodList[index])
-		}
-
-		refreshCartDetail(cartDetail, cartFoods, cartFoodMap)
+		reinitializeMenuCount(currentMenuCount, currentSelectedFood, cartFoodMap)
 	})
 
-	// menuDetailFlex := tview.NewFlex().SetDirection(tview.FlexRow)
-	// menuDetailFlex.AddItem(foodImage, 0, 4, false).SetBorder(true).SetBorderPadding(1, 0, 0, 0)
-	// menuDetailFlex.AddItem(foodInfoText, 0, 6, false)
+	// Menu Actions related
+	decreaseButton := tview.NewButton("-").SetSelectedFunc(func() {
+		refreshMenuCount("decrease", currentMenuCount, cartFoodMap, currentSelectedFood)
+		refreshMenuDetail(menuList, currentSelectedIndex, cartFoodMap, currentSelectedFood)
+		refreshTotalCount(cartDetail, cartFoods, cartFoodMap)
+	})
+
+	increaseButton := tview.NewButton("+").SetSelectedFunc(func() {
+		refreshMenuCount("increase", currentMenuCount, cartFoodMap, currentSelectedFood)
+		refreshMenuDetail(menuList, currentSelectedIndex, cartFoodMap, currentSelectedFood)
+		refreshTotalCount(cartDetail, cartFoods, cartFoodMap)
+	})
+
+	menuActionGrid := tview.NewGrid()
+	menuActionGrid.SetRows(0)
+	menuActionGrid.SetColumns(0)
+	menuActionGrid.AddItem(decreaseButton, 0, 0, 1, 1, 0, 0, false)
+	menuActionGrid.AddItem(currentMenuCount, 0, 1, 1, 1, 0, 0, false)
+	menuActionGrid.AddItem(increaseButton, 0, 2, 1, 1, 0, 0, false)
 
 	menuDetailGrid := tview.NewGrid()
-	menuDetailGrid.SetRows(0)
+	menuDetailGrid.SetRows(0, 0, 3)
 	menuDetailGrid.SetColumns(0)
 	menuDetailGrid.AddItem(foodImage, 0, 0, 1, 2, 1, 0, true)
 	menuDetailGrid.AddItem(foodInfoText, 1, 0, 1, 2, 1, 0, false)
+	menuDetailGrid.AddItem(menuActionGrid, 2, 0, 1, 2, 1, 0, false)
 	menuDetailGrid.SetBorders(true)
 
 	menuListGrid := tview.NewGrid()
@@ -111,14 +120,51 @@ func assignMenuView() *tview.Flex {
 	return flexbox
 }
 
-func refreshCartDetail(cartDetail *tview.TextView, cartFoods []db.Food, cartMap map[int]int) {
-	cartDetail.Clear()
-	total := 0
-
-	for _, food := range cartFoods {
-		total += cartMap[food.ID] * food.Price
+func refreshMenuDetail(menuList *tview.List, index int, cartMap map[int]int, currentFood db.Food) {
+	_, itemExist := cartMap[currentFood.ID]
+	if itemExist {
+		menuList.SetItemText(index, currentFood.Name, strconv.Itoa(currentFood.Price)+" | x"+strconv.Itoa(cartMap[currentFood.ID]))
+	} else {
+		menuList.SetItemText(index, currentFood.Name, strconv.Itoa(currentFood.Price))
 	}
 
+}
+
+func refreshMenuCount(action string, menuCountText *tview.TextView, cartMap map[int]int, currentFood db.Food) {
+	_, itemExist := cartMap[currentFood.ID]
+	switch action {
+	case "increase":
+		if itemExist {
+			cartMap[currentFood.ID] = cartMap[currentFood.ID] + 1
+		} else {
+			cartMap[currentFood.ID] = 1
+			cartFoods = append(cartFoods, currentFood)
+		}
+	case "decrease":
+		if itemExist {
+			if cartMap[currentFood.ID] > 1 {
+				cartMap[currentFood.ID] = cartMap[currentFood.ID] - 1
+			} else {
+				delete(cartMap, currentFood.ID)
+				cartFoods = removeItem(cartFoods, currentFood.ID)
+			}
+		}
+	}
+
+	menuCountText.Clear()
+	menuCountText.SetText("x" + strconv.Itoa(cartMap[currentFood.ID]))
+}
+
+func reinitializeMenuCount(currentMenuCount *tview.TextView, currentSelectedFood db.Food, cartFoodMap map[int]int) {
+	currentMenuCount.SetText("x" + strconv.Itoa(cartFoodMap[currentSelectedFood.ID]))
+}
+
+func refreshTotalCount(cartDetail *tview.TextView, cartFoods []db.Food, cartFoodMap map[int]int) {
+	total := 0
+	for _, food := range cartFoods {
+		total += food.Price * cartFoodMap[food.ID]
+	}
+	cartDetail.Clear()
 	cartDetail.SetText("Total: " + strconv.Itoa(total))
 }
 
@@ -141,4 +187,14 @@ func detectUserInput(app *tview.Application, pages *tview.Pages) {
 		}
 		return event
 	})
+}
+
+func removeItem(cartFoods []db.Food, foodID int) []db.Food {
+	var newArray []db.Food
+	for _, food := range cartFoods {
+		if food.ID != foodID {
+			newArray = append(newArray, food)
+		}
+	}
+	return newArray
 }
