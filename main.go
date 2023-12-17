@@ -186,6 +186,7 @@ func listPages() *tview.Pages {
 	pages := tview.NewPages()
 
 	MenuPage := assignMenuView()
+	MainMenuPage := assignMainMenuView()
 
 	modal := tview.NewModal()
 	modal.SetText("Your order has been confirmed!")
@@ -194,7 +195,8 @@ func listPages() *tview.Pages {
 	})
 
 	pages.AddPage("modal", modal, true, false)
-	pages.AddPage("menu", MenuPage, true, true)
+	pages.AddPage("menu", MenuPage, true, false)
+	pages.AddPage("mainMenu", MainMenuPage, true, true)
 
 	return pages
 }
@@ -203,7 +205,7 @@ func detectUserInput(app *tview.Application, pages *tview.Pages) {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
 		case rune('c'): // Key a is pressed.
-			pages.SwitchToPage("modal")
+			pages.SwitchToPage("mainMenu")
 		}
 		return event
 	})
@@ -221,4 +223,27 @@ func removeItem(cartFoods []db.Food, foodID int) []db.Food {
 
 func changeToConfirmPage() {
 	pages.SwitchToPage("modal")
+}
+
+func assignMainMenuView() *tview.Grid {
+	programTitle := tview.NewTextView().SetText("Food Order TUI").SetTextAlign(tview.AlignCenter).SetTextColor(tcell.ColorGreen)
+
+	menuListButton := tview.NewButton("Menu List").SetSelectedFunc(func() {
+		pages.SwitchToPage("menu")
+	})
+
+	orderListButton := tview.NewButton("Orders").SetSelectedFunc(func() {
+		app.Stop()
+	})
+
+	mainMenuGrid := tview.NewGrid()
+	mainMenuGrid.SetRows(0)
+	mainMenuGrid.SetColumns(0)
+	mainMenuGrid.AddItem(programTitle, 0, 0, 1, 2, 0, 0, false)
+	mainMenuGrid.AddItem(menuListButton, 1, 0, 1, 1, 0, 0, false)
+	mainMenuGrid.AddItem(orderListButton, 1, 1, 1, 1, 0, 0, false)
+	mainMenuGrid.SetBorders(true)
+	mainMenuGrid.SetBorderPadding(5, 5, 5, 5)
+
+	return mainMenuGrid
 }
